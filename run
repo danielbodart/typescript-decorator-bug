@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -Eeo pipefail
+shopt -s globstar
+
+function setup_asdf() {
+  if [[ ! $(command -v asdf) ]]; then
+    if [[ ! -f "$HOME/.asdf/asdf.sh" ]]; then
+      echo "* Downloading and installing asdf..."
+      git clone -c advice.detachedHead=false https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.12.0 > /dev/null 2>&1
+    fi
+    . "$HOME/.asdf/asdf.sh"
+  fi
+}
+
+function setup_deno() {
+  if [[ ! $(asdf plugin list) =~ deno ]]; then
+    echo "* Downloading and installing deno plugin..."
+    asdf plugin add deno > /dev/null 2>&1
+  fi
+}
+
+function setup_node() {
+  if [[ ! $(asdf plugin list) =~ nodejs ]]; then
+    echo "* Downloading and installing node plugin..."
+    asdf plugin add nodejs > /dev/null 2>&1
+  fi
+}
+
+function setup_pnpm() {
+  if [[ ! $(command -v pnpm) ]]; then
+      npm install -g pnpm
+  fi
+  pnpm install --no-frozen-lockfile
+}
+
+function setup() {
+  setup_asdf
+  setup_deno
+  setup_node
+  asdf install
+  setup_pnpm
+}
+
+function run-with-deno() {
+  echo
+  echo "BEGIN Deno test"
+  deno run index.ts
+  echo "END Deno test"
+  echo
+}
+
+function run-with-tsc() {
+  echo
+  echo "BEGIN TSC test"
+  pnpm exec tsc --build --force
+  node dist/index.js
+  echo "END TSC test"
+  echo
+}
+
+function run-with-esbuild() {
+  echo
+  echo "BEGIN esbuild test"
+  pnpm exec esbuild index.ts --outfile=dist/index.mjs
+  node dist/index.mjs
+  echo "END esbuild test"
+  echo
+}
+
+setup
+run-with-deno
+run-with-tsc
+run-with-esbuild
+
+
